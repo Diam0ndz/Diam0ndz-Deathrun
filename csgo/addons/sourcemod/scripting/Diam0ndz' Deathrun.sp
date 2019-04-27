@@ -57,8 +57,11 @@ public void OnPluginStart()
 	
 	RegConsoleCmd("sm_freerun", Command_Freerun, "Calls a freerun");
 	
-	//HookEvent("round_prestart", Event_RoundPreStart);
 	HookEvent("round_end", Event_RoundEnd, EventHookMode_Pre);
+	
+	AddCommandListener(Console_Kill, "explode");
+	AddCommandListener(Console_Kill, "kill");
+	AddCommandListener(Console_JoinTeam, "jointeam");
 }
 
 public Action Command_Freerun(int client, int args)
@@ -115,6 +118,41 @@ public Action Event_RoundEnd(Event event, const char[] name, bool dontBroadcast)
 	}
 }
 
+public Action Console_Kill(int client, const char[] command, int args)
+{
+	if(GetClientTeam(client) == CS_TEAM_T)
+	{
+		PrintToChat(client, "%s Nice try! ;)", PREFIX);
+		return Plugin_Handled;
+	}
+	return Plugin_Continue;
+}
+
+public Action Console_JoinTeam(int client, const char[] command, int args)
+{
+	char argString[32];  
+	GetCmdArg(1, argString, sizeof(argString));
+	int arg = StringToInt(argString);
+	
+	if(GetClientTeam(client) == CS_TEAM_T)
+	{
+		if(GetTeamClientCount(CS_TEAM_CT) > 1)
+		{
+			PrintToChat(client, "%s You cannot switch off of T at this time.", PREFIX);
+			return Plugin_Handled;
+		}
+	}
+	if(arg == CS_TEAM_T)
+	{
+		if(GetTeamClientCount(CS_TEAM_T) > 0)
+		{
+			PrintToChat(client, "%s There is already a player on T.", PREFIX);
+			return Plugin_Handled;
+		}
+	}
+	return Plugin_Continue;
+}
+
 public void ActivateFreerun()
 {
 	PrintToChatAll("%s A Freerun has been initiated!", PREFIX);
@@ -123,13 +161,16 @@ public void ActivateFreerun()
 
 public void UpdateTCount()
 {
-	int numberOfCTs = GetTeamClientCount(CS_TEAM_CT);
-	numberOfTs = numberOfCTs / addTPerCtCV.IntValue;
-	for (int i = 0; i <= numberOfTs; i++)
+	int numberOfClients = GetTeamClientCount(CS_TEAM_CT) + GetTeamClientCount(CS_TEAM_T);
+	numberOfTs = numberOfClients / addTPerCtCV.IntValue;
+	for (int i = 0; i <= GetTeamClientCount(CS_TEAM_T); i++)
 	{
 		int switchBack = GetRandomPlayerFromTeam(CS_TEAM_T);
 		CS_SwitchTeam(switchBack, CS_TEAM_CT);
 		PrintToChat(switchBack, "%s You were switched to CT.", PREFIX);
+	}
+	for (int i = 0; i <= numberOfTs; i++)
+	{
 		int toSwitch = GetRandomPlayerFromTeam(CS_TEAM_CT);
 		CS_SwitchTeam(toSwitch, CS_TEAM_T);
 		PrintToChat(toSwitch, "%s It's your turn to become the T! Kill as many CTs as you can while they run the course. You can activate a Freerun with !freerun.", PREFIX);
