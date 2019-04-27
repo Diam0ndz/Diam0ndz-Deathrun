@@ -1,0 +1,171 @@
+#pragma semicolon 1
+
+#define DEBUG
+
+#define PLUGIN_AUTHOR "Diam0ndz"
+#define PLUGIN_VERSION "0.1"
+#define PREFIX " \x01[\x0bDeathrun\x01]\x0b"
+
+#include <sourcemod>
+#include <sdktools>
+#include <cstrike>
+#include <autoexecconfig>
+//#include <sdkhooks>
+
+#pragma newdecls required
+
+EngineVersion g_Game;
+
+ConVar freerunEnabledCV;
+ConVar freerunCooldownCV;
+ConVar addTPerCtCV;
+ConVar tRounds;
+
+int freerunCooldown = 0;
+bool isFreerun;
+
+int numberOfTs;
+int tRoundCount = 0;
+
+public Plugin myinfo = 
+{
+	name = "Diam0ndz' Deathrun",
+	author = PLUGIN_AUTHOR,
+	description = "The most customizable Deathrun plugin for CS:GO",
+	version = PLUGIN_VERSION,
+	url = ""
+};
+
+public void OnPluginStart()
+{
+	g_Game = GetEngineVersion();
+	if(g_Game != Engine_CSGO && g_Game != Engine_CSS)
+	{
+		SetFailState("This plugin is for CSGO/CSS only.");	
+	}
+	
+	AutoExecConfig_SetCreateDirectory(true);
+	AutoExecConfig_SetCreateFile(true);
+	AutoExecConfig_SetFile("deathrun");
+	
+	freerunEnabledCV = AutoExecConfig_CreateConVar("dr_freerunenabled", "1", "Sets whether Ts may activate a freerun", FCVAR_PROTECTED);
+	freerunCooldownCV = AutoExecConfig_CreateConVar("dr_freeruncooldown", "3", "Amount of rounds a T has to wait before calling another freerun", FCVAR_PROTECTED);
+	addTPerCtCV = AutoExecConfig_CreateConVar("dr_addTPerCt", "15", "For each number of additional CTs, we add one more T", FCVAR_PROTECTED);
+	tRounds = AutoExecConfig_CreateConVar("dr_tRounds", "3", "Number of rounds a T has to spend before getting switched back to CT", FCVAR_PROTECTED);
+	AutoExecConfig_ExecuteFile();
+	AutoExecConfig_CleanFile();
+	
+	RegConsoleCmd("sm_freerun", Command_Freerun, "Calls a freerun");
+	
+	//HookEvent("round_prestart", Event_RoundPreStart);
+	HookEvent("round_end", Event_RoundEnd, EventHookMode_Pre);
+}
+
+public Action Command_Freerun(int client, int args)
+{
+	if(!IsValidClient(client))
+	{
+		PrintToChat(client, "%s You are not a valid client.", PREFIX);
+		return Plugin_Handled;
+	}
+	
+	if(!freerunEnabledCV.BoolValue)
+	{
+		PrintToChat(client, "%s Freerun is currently disabled.", PREFIX);
+		return Plugin_Handled;
+	}
+	
+	if(GetClientTeam(client) != CS_TEAM_T)
+	{
+		PrintToChat(client, "%s You are on the wrong team to call a freerun.", PREFIX);
+		return Plugin_Handled;
+	}
+	
+	if(isFreerun)
+	{
+		PrintToChat(client, "%s There is a Freerun already in progress.", PREFIX);
+		return Plugin_Handled;
+	}
+	
+	if (freerunCooldown > 0)
+	{
+		PrintToChat(client, "%s You need to wait %i more rounds before calling a Freerun.", PREFIX, freerunCooldown);
+		return Plugin_Handled;
+	}
+	ActivateFreerun();
+	return Plugin_Handled;
+}
+
+public Action Event_RoundEnd(Event event, const char[] name, bool dontBroadcast)
+{
+	if(tRoundCount >= tRounds.IntValue)
+	{
+		UpdateTCount();
+		tRoundCount = 0;
+	}
+	tRoundCount++;
+	if(freerunCooldown > 0)
+	{
+		freerunCooldown--;
+	}
+	if(isFreerun)
+	{
+		isFreerun = false;
+		freerunCooldown = freerunCooldownCV.IntValue;
+	}
+}
+
+public void ActivateFreerun()
+{
+	PrintToChatAll("%s A Freerun has been initiated!", PREFIX);
+	isFreerun = true;
+}
+
+public void UpdateTCount()
+{
+	int numberOfCTs = GetTeamClientCount(CS_TEAM_CT);
+	numberOfTs = numberOfCTs / addTPerCtCV.IntValue;
+	for (int i = 0; i <= numberOfTs; i++)
+	{
+		int switchBack = GetRandomPlayerFromTeam(CS_TEAM_T);
+		CS_SwitchTeam(switchBack, CS_TEAM_CT);
+		PrintToChat(switchBack, "%s You were switched to CT.", PREFIX);
+		int toSwitch = GetRandomPlayerFromTeam(CS_TEAM_CT);
+		CS_SwitchTeam(toSwitch, CS_TEAM_T);
+		PrintToChat(toSwitch, "%s It's your turn to become the T! Kill as many CTs as you can while they run the course. You can activate a Freerun with !freerun.", PREFIX);
+	}
+}
+
+public Action OnPlayerRunCmd(int client, int& buttons, int& impulse, float vel[3], float angles[3], int& weapon)
+{
+	if(isFreerun)
+	{
+		if(GetClientTeam(client) == CS_TEAM_T)
+		{
+			if(buttons & IN_USE)
+			{
+				buttons &= ~IN_USE;
+			}
+		}
+	}
+}
+
+stock int GetRandomPlayerFromTeam(int team) //Get a random player from a specific team
+{
+    int[] clients = new int[MaxClients + 1];
+    int clientCount;
+    for (int i = 1; i <= MaxClients; i++)
+    if (IsClientInGame(i) && (GetClientTeam(i) == team))
+        clients[clientCount++] = i;
+    return (clientCount == 0) ? -1 : clients[GetRandomInt(0, clientCount - 1)];
+}
+
+stock bool IsValidClient(int client) //Checks for making sure we are a valid client
+{
+	if (client <= 0) return false;
+	if (client > MaxClients) return false;
+	if (!IsClientConnected(client)) return false;
+	if (IsFakeClient(client)) return false;
+	if (IsClientSourceTV(client))return false;
+	return IsClientInGame(client);
+}
