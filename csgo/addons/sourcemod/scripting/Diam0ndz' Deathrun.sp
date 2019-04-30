@@ -3,7 +3,7 @@
 #define DEBUG
 
 #define PLUGIN_AUTHOR "Diam0ndz"
-#define PLUGIN_VERSION "0.1"
+#define PLUGIN_VERSION "0.1.2"
 #define PREFIX " \x01[\x0bDeathrun\x01]\x0b"
 
 #include <sourcemod>
@@ -16,6 +16,7 @@
 
 EngineVersion g_Game;
 
+ConVar deathrunVersion;
 ConVar freerunEnabledCV;
 ConVar freerunCooldownCV;
 ConVar addTPerCtCV;
@@ -48,6 +49,7 @@ public void OnPluginStart()
 	AutoExecConfig_SetCreateFile(true);
 	AutoExecConfig_SetFile("deathrun");
 	
+	deathrunVersion = AutoExecConfig_CreateConVar("dr_version", PLUGIN_VERSION, "Diam0ndz' Deathrun Version", FCVAR_SPONLY|FCVAR_NOTIFY|FCVAR_DONTRECORD);
 	freerunEnabledCV = AutoExecConfig_CreateConVar("dr_freerunenabled", "1", "Sets whether Ts may activate a freerun", FCVAR_PROTECTED);
 	freerunCooldownCV = AutoExecConfig_CreateConVar("dr_freeruncooldown", "3", "Amount of rounds a T has to wait before calling another freerun", FCVAR_PROTECTED);
 	addTPerCtCV = AutoExecConfig_CreateConVar("dr_addTPerCt", "15", "For each number of additional CTs, we add one more T", FCVAR_PROTECTED);
