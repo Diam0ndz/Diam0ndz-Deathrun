@@ -16,4 +16,4 @@ My goal is to make the most customizable Deathrun plugin for CS:GO(CS:S?) and ma
 - dr_tRounds
   - Number of rounds a T has to spend before getting switched back to CT(Default: 3)
 ## To-Do
-- [] Detection for when a T evades being a T by leaving and coming back
+- [ ] Detection for when a T evades being a T by leaving and coming back
