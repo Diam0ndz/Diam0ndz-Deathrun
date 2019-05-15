@@ -3,7 +3,7 @@
 #define DEBUG
 
 #define PLUGIN_AUTHOR "Diam0ndz"
-#define PLUGIN_VERSION "0.1.2"
+#define PLUGIN_VERSION "0.1.3"
 #define PREFIX " \x01[\x0bDeathrun\x01]\x0b"
 
 #include <sourcemod>
@@ -21,6 +21,7 @@ ConVar freerunEnabledCV;
 ConVar freerunCooldownCV;
 ConVar addTPerCtCV;
 ConVar tRounds;
+ConVar autoCtRespawn;
 
 int freerunCooldown = 0;
 bool isFreerun;
@@ -52,18 +53,44 @@ public void OnPluginStart()
 	deathrunVersion = AutoExecConfig_CreateConVar("dr_version", PLUGIN_VERSION, "Diam0ndz' Deathrun Version", FCVAR_SPONLY|FCVAR_NOTIFY|FCVAR_DONTRECORD);
 	freerunEnabledCV = AutoExecConfig_CreateConVar("dr_freerunenabled", "1", "Sets whether Ts may activate a freerun", FCVAR_PROTECTED);
 	freerunCooldownCV = AutoExecConfig_CreateConVar("dr_freeruncooldown", "3", "Amount of rounds a T has to wait before calling another freerun", FCVAR_PROTECTED);
-	addTPerCtCV = AutoExecConfig_CreateConVar("dr_addTPerCt", "15", "For each number of additional CTs, we add one more T", FCVAR_PROTECTED);
-	tRounds = AutoExecConfig_CreateConVar("dr_tRounds", "3", "Number of rounds a T has to spend before getting switched back to CT", FCVAR_PROTECTED);
+	addTPerCtCV = AutoExecConfig_CreateConVar("dr_addtperct", "15", "For each number of additional CTs, we add one more T", FCVAR_PROTECTED);
+	tRounds = AutoExecConfig_CreateConVar("dr_trounds", "3", "Number of rounds a T has to spend before getting switched back to CT", FCVAR_PROTECTED);
+	autoCtRespawn = AutoExecConfig_CreateConVar("dr_autoctrespawn", "1", "Sets whether CTs should respawn if there are no Ts", FCVAR_PROTECTED);
 	AutoExecConfig_ExecuteFile();
 	AutoExecConfig_CleanFile();
 	
 	RegConsoleCmd("sm_freerun", Command_Freerun, "Calls a freerun");
 	
 	HookEvent("round_end", Event_RoundEnd, EventHookMode_Pre);
+	HookEvent("player_death", Event_PlayerDeath, EventHookMode_Post);
 	
 	AddCommandListener(Console_Kill, "explode");
 	AddCommandListener(Console_Kill, "kill");
 	AddCommandListener(Console_JoinTeam, "jointeam");
+}
+
+public void OnMapStart()
+{
+	PrintToChatAll("%s This server is running Diam0ndz' Deathrun! V%s", PREFIX, deathrunVersion);
+}
+
+public Action Event_RoundEnd(Event event, const char[] name, bool dontBroadcast)
+{
+	if(tRoundCount >= tRounds.IntValue)
+	{
+		UpdateTCount();
+		tRoundCount = 0;
+	}
+	tRoundCount++;
+	if(freerunCooldown > 0)
+	{
+		freerunCooldown--;
+	}
+	if(isFreerun)
+	{
+		isFreerun = false;
+		freerunCooldown = freerunCooldownCV.IntValue;
+	}
 }
 
 public Action Command_Freerun(int client, int args)
@@ -101,23 +128,21 @@ public Action Command_Freerun(int client, int args)
 	return Plugin_Handled;
 }
 
-public Action Event_RoundEnd(Event event, const char[] name, bool dontBroadcast)
+public Action Event_PlayerDeath(Event event, const char[] name, bool dontBroadcast)
 {
-	if(tRoundCount >= tRounds.IntValue)
+	if(autoCtRespawn.BoolValue)
 	{
-		UpdateTCount();
-		tRoundCount = 0;
+		if(GetTeamClientCount(CS_TEAM_T) <= 0)
+		{
+			int client = GetClientOfUserId(GetEventInt(event, "userid"));
+			CreateTimer(2.5, TimerRespawn, client);
+		}
 	}
-	tRoundCount++;
-	if(freerunCooldown > 0)
-	{
-		freerunCooldown--;
-	}
-	if(isFreerun)
-	{
-		isFreerun = false;
-		freerunCooldown = freerunCooldownCV.IntValue;
-	}
+}
+
+public Action TimerRespawn(Handle timer, int client)
+{
+	CS_RespawnPlayer(client);
 }
 
 public Action Console_Kill(int client, const char[] command, int args)
