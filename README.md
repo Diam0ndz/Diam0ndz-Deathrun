@@ -19,4 +19,5 @@ My goal is to make the most customizable Deathrun plugin for CS:GO(CS:S?) and ma
 - dr_autoctrespawn
   - Sets whether CTs should respawn if there are no Ts(Default: 1)
 ## To-Do
+- [ ] Queueing for T
 - [ ] Detection for when a T evades being a T by leaving and coming back
