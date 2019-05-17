@@ -1,6 +1,6 @@
 # Diam0ndz-Deathrun
 ## [The Discord](https://discord.gg/Cvy2qGe)
-### VERSION: 0.1.3
+### VERSION: 0.1.4
 ![Deathrun Image](https://i.imgur.com/2BfQdUA.png)
 
 ## About
