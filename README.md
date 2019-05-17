@@ -1,8 +1,7 @@
 # Diam0ndz-Deathrun
+## [The Discord](https://discord.gg/Cvy2qGe)
 ### VERSION: 0.1.3
 ![Deathrun Image](https://i.imgur.com/2BfQdUA.png)
-
-## [The Discord](https://discord.gg/Cvy2qGe)
 
 ## About
 My goal is to make the most customizable Deathrun plugin for CS:GO(CS:S?) and make it as enjoyable and compatable as possible.
