@@ -3,7 +3,7 @@
 #define DEBUG
 
 #define PLUGIN_AUTHOR "Diam0ndz"
-#define PLUGIN_VERSION "0.1.3"
+#define PLUGIN_VERSION "0.1.4"
 #define PREFIX " \x01[\x0bDeathrun\x01]\x0b"
 
 #include <sourcemod>
@@ -22,9 +22,12 @@ ConVar freerunCooldownCV;
 ConVar addTPerCtCV;
 ConVar tRounds;
 ConVar autoCtRespawn;
+ConVar queueSystem;
 
 int freerunCooldown = 0;
 bool isFreerun;
+
+int queue[MAXPLAYERS + 1];
 
 int numberOfTs;
 int tRoundCount = 0;
@@ -35,7 +38,7 @@ public Plugin myinfo =
 	author = PLUGIN_AUTHOR,
 	description = "The most customizable Deathrun plugin for CS:GO",
 	version = PLUGIN_VERSION,
-	url = ""
+	url = "https://steamcommunity.com/id/diam0ndz"
 };
 
 public void OnPluginStart()
@@ -56,10 +59,12 @@ public void OnPluginStart()
 	addTPerCtCV = AutoExecConfig_CreateConVar("dr_addtperct", "15", "For each number of additional CTs, we add one more T", FCVAR_PROTECTED);
 	tRounds = AutoExecConfig_CreateConVar("dr_trounds", "3", "Number of rounds a T has to spend before getting switched back to CT", FCVAR_PROTECTED);
 	autoCtRespawn = AutoExecConfig_CreateConVar("dr_autoctrespawn", "1", "Sets whether CTs should respawn if there are no Ts", FCVAR_PROTECTED);
+	queueSystem = AutoExecConfig_CreateConVar("dr_queuesystem", "1", "Sets whether the queue system should be used", FCVAR_PROTECTED);
 	AutoExecConfig_ExecuteFile();
 	AutoExecConfig_CleanFile();
 	
 	RegConsoleCmd("sm_freerun", Command_Freerun, "Calls a freerun");
+	RegConsoleCmd("sm_queue", Command_Queue, "Joins the queue to become a T or checks your position in the queue");
 	
 	HookEvent("round_end", Event_RoundEnd, EventHookMode_Pre);
 	HookEvent("player_death", Event_PlayerDeath, EventHookMode_Post);
@@ -71,7 +76,25 @@ public void OnPluginStart()
 
 public void OnMapStart()
 {
-	PrintToChatAll("%s This server is running Diam0ndz' Deathrun! V%s", PREFIX, deathrunVersion);
+	PrintToChatAll("%s This server is running Diam0ndz' Deathrun! V%s", PREFIX, PLUGIN_VERSION);
+}
+
+public void OnClientPutInServer(int client)
+{
+	if(IsValidClient(client)) queue[client] = 0;
+}
+
+public void OnClientDisconnect(int client)
+{
+	for (int i = 0; i < MAXPLAYERS + 1; i++)
+	{
+		if(queue[i] >= queue[client] && i != client)
+		{
+			queue[i]--;
+			PrintToChat(client, "%s You were moved up to position %i in the queue.", PREFIX, queue[i]);
+		}
+	}
+	queue[client] = 0;
 }
 
 public Action Event_RoundEnd(Event event, const char[] name, bool dontBroadcast)
@@ -91,6 +114,51 @@ public Action Event_RoundEnd(Event event, const char[] name, bool dontBroadcast)
 		isFreerun = false;
 		freerunCooldown = freerunCooldownCV.IntValue;
 	}
+}
+
+public Action Command_Queue(int client, int args)
+{
+	if(!IsValidClient(client))
+	{
+		PrintToChat(client, "%s You are not a valid client.", PREFIX);
+		return Plugin_Handled;
+	}
+	
+	if(!queueSystem.BoolValue)
+	{
+		PrintToChat(client, "%s The queue system is currently disabled.", PREFIX);
+		return Plugin_Handled;
+	}
+	
+	if(GetClientTeam(client) == CS_TEAM_T)
+	{
+		PrintToChat(client, "%s You are already on T.", PREFIX);
+		return Plugin_Handled;
+	}
+	
+	if(queue[client] > 0)
+	{
+		PrintToChat(client, "%s You are position %i in the queue.", PREFIX, queue[client]);
+		return Plugin_Handled;
+	}
+	
+	int positionToBeIn = 0;
+	for (int i = 0; i < MAXPLAYERS + 1; i++)
+	{
+		if(queue[i] >= positionToBeIn)
+		{
+			positionToBeIn = queue[i] + 1;
+		}
+	}
+	for (int i = 0; i < MAXPLAYERS + 1; i++)
+	{
+		if(i == client)
+		{
+			queue[i] = positionToBeIn;
+		}
+	}
+	PrintToChat(client, "%s You are now position %i in the queue.", PREFIX, positionToBeIn);
+	return Plugin_Handled;
 }
 
 public Action Command_Freerun(int client, int args)
@@ -187,7 +255,26 @@ public void ActivateFreerun()
 }
 
 public void UpdateTCount()
-{
+{	
+	bool playerInQueue;
+	for (int i = 0; i < MAXPLAYERS + 1; i++)
+	{
+		if(IsValidClient(i))
+		{
+			PrintToChat(i, "YOU ARE IN QUEUE %i", queue[i]);
+		}
+		if(queue[i] > 0)
+		{
+			playerInQueue = true;
+			PrintToChatAll("THERE IS A PLAYER IN QUEUE");
+			PrintToChat(i, "YOU ARE IN QUEUE");
+			break;
+		}else
+		{
+			if(IsValidClient(i)) PrintToChat(i, "YOU ARE IN NOT IN QUEUE");
+		}
+	}
+	
 	int numberOfClients = GetTeamClientCount(CS_TEAM_CT) + GetTeamClientCount(CS_TEAM_T);
 	numberOfTs = numberOfClients / addTPerCtCV.IntValue;
 	for (int i = 0; i <= GetTeamClientCount(CS_TEAM_T); i++)
@@ -198,9 +285,34 @@ public void UpdateTCount()
 	}
 	for (int i = 0; i <= numberOfTs; i++)
 	{
-		int toSwitch = GetRandomPlayerFromTeam(CS_TEAM_CT);
-		CS_SwitchTeam(toSwitch, CS_TEAM_T);
-		PrintToChat(toSwitch, "%s It's your turn to become the T! Kill as many CTs as you can while they run the course. You can activate a Freerun with !freerun.", PREFIX);
+		if(playerInQueue)
+		{
+			PrintToChatAll("THERE IS A PLAYER IN QUEUE IF STATEMENT PASS!");
+			for (int k = 0; k < MAXPLAYERS + 1; k++)
+			{
+				if(queue[k] == 1)
+				{
+					CS_SwitchTeam(k, CS_TEAM_T);
+					PrintToChat(k, "%s It's your turn to become the T! Kill as many CTs as you can while they run the course. You can activate a Freerun with !freerun.", PREFIX);
+					queue[k] = 0;
+					for (int l = 0; l < MAXPLAYERS + 1; l++)
+					{
+						if(queue[l] > 1)
+						{
+							queue[l]--;
+							PrintToChat(l, "%s You are position %i in the queue.", PREFIX, queue[l]);
+						}
+					}
+				}
+			}
+		}
+		else
+		{
+			PrintToChatAll("THERE IS A PLAYER IN QUEUE IF STATEMENT FAIL!");
+			int toSwitch = GetRandomPlayerFromTeam(CS_TEAM_CT);
+			CS_SwitchTeam(toSwitch, CS_TEAM_T);
+			PrintToChat(toSwitch, "%s It's your turn to become the T! Kill as many CTs as you can while they run the course. You can activate a Freerun with !freerun.", PREFIX);
+		}
 	}
 }
 
