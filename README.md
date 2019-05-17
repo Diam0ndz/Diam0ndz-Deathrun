@@ -1,5 +1,5 @@
 # Diam0ndz-Deathrun
-### VERSION: 0.1.3.0
+### VERSION: 0.1.3
 ![Deathrun Image](https://i.imgur.com/2BfQdUA.png)
 
 ## About
