@@ -1,6 +1,6 @@
 # Diam0ndz-Deathrun
 ## [The Discord](https://discord.gg/Cvy2qGe)
-### VERSION: 0.1.4
+### VERSION: 0.1.5
 ![Deathrun Image](https://i.imgur.com/2BfQdUA.png)
 
 ## About
@@ -20,5 +20,4 @@ My goal is to make the most customizable Deathrun plugin for CS:GO(CS:S?) and ma
 - dr_autoctrespawn
   - Sets whether CTs should respawn if there are no Ts(Default: 1)
 ## To-Do
-- [x] Queueing for T
 - [ ] Detection for when a T evades being a T by leaving and coming back
