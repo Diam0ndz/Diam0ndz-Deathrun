@@ -3,7 +3,7 @@
 #define DEBUG
 
 #define PLUGIN_AUTHOR "Diam0ndz"
-#define PLUGIN_VERSION "0.1.4"
+#define PLUGIN_VERSION "0.1.5"
 #define PREFIX " \x01[\x0bDeathrun\x01]\x0b"
 
 #include <sourcemod>
@@ -60,6 +60,7 @@ public void OnPluginStart()
 	tRounds = AutoExecConfig_CreateConVar("dr_trounds", "3", "Number of rounds a T has to spend before getting switched back to CT", FCVAR_PROTECTED);
 	autoCtRespawn = AutoExecConfig_CreateConVar("dr_autoctrespawn", "1", "Sets whether CTs should respawn if there are no Ts", FCVAR_PROTECTED);
 	queueSystem = AutoExecConfig_CreateConVar("dr_queuesystem", "1", "Sets whether the queue system should be used", FCVAR_PROTECTED);
+	deathrunVersion.SetString(PLUGIN_VERSION);
 	AutoExecConfig_ExecuteFile();
 	AutoExecConfig_CleanFile();
 	
@@ -259,19 +260,10 @@ public void UpdateTCount()
 	bool playerInQueue;
 	for (int i = 0; i < MAXPLAYERS + 1; i++)
 	{
-		if(IsValidClient(i))
-		{
-			PrintToChat(i, "YOU ARE IN QUEUE %i", queue[i]);
-		}
 		if(queue[i] > 0)
 		{
 			playerInQueue = true;
-			PrintToChatAll("THERE IS A PLAYER IN QUEUE");
-			PrintToChat(i, "YOU ARE IN QUEUE");
 			break;
-		}else
-		{
-			if(IsValidClient(i)) PrintToChat(i, "YOU ARE IN NOT IN QUEUE");
 		}
 	}
 	
@@ -287,7 +279,6 @@ public void UpdateTCount()
 	{
 		if(playerInQueue)
 		{
-			PrintToChatAll("THERE IS A PLAYER IN QUEUE IF STATEMENT PASS!");
 			for (int k = 0; k < MAXPLAYERS + 1; k++)
 			{
 				if(queue[k] == 1)
@@ -308,7 +299,6 @@ public void UpdateTCount()
 		}
 		else
 		{
-			PrintToChatAll("THERE IS A PLAYER IN QUEUE IF STATEMENT FAIL!");
 			int toSwitch = GetRandomPlayerFromTeam(CS_TEAM_CT);
 			CS_SwitchTeam(toSwitch, CS_TEAM_T);
 			PrintToChat(toSwitch, "%s It's your turn to become the T! Kill as many CTs as you can while they run the course. You can activate a Freerun with !freerun.", PREFIX);
